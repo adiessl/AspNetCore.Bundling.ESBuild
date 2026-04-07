@@ -1,0 +1,53 @@
+name: Feature Request
+description: Propose a new capability or improvement
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for concrete feature proposals.
+
+        If you want to contribute code, get prior maintainer approval before opening a pull request.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What practical problem are you trying to solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the behavior you want from the package.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What are you doing today instead, and why is it insufficient?
+    validations:
+      required: true
+
+  - type: textarea
+    id: config_example
+    attributes:
+      label: Proposed esbuild.json example
+      description: If relevant, show the config shape you would expect to write.
+      render: json
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contribution_ack
+    attributes:
+      label: Contribution policy
+      options:
+        - label: I understand that no pull request will be accepted without prior maintainer approval.
+          required: true

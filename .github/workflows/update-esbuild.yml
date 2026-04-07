@@ -1,0 +1,88 @@
+name: Update esbuild
+
+on:
+  schedule:
+    - cron: "30 5 * * *"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Optional esbuild version override"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Determine target version
+        id: version
+        shell: bash
+        run: |
+          current_version="$(dotnet run --file scripts/update_esbuild.cs -- --print-current-version)"
+          requested_version="${{ github.event.inputs.version }}"
+
+          if [[ -n "$requested_version" ]]; then
+            target_version="$requested_version"
+          else
+            target_version="$(dotnet run --file scripts/update_esbuild.cs -- --print-latest-version)"
+          fi
+
+          lowest_version="$(printf '%s\n%s\n' "$current_version" "$target_version" | sort -V | head -n1)"
+          if [[ "$lowest_version" == "$target_version" && "$target_version" != "$current_version" ]]; then
+            echo "Target version $target_version is older than current version $current_version."
+            exit 1
+          fi
+
+          branch_name="esbuild/${target_version}"
+
+          echo "current_version=$current_version" >> "$GITHUB_OUTPUT"
+          echo "target_version=$target_version" >> "$GITHUB_OUTPUT"
+          echo "branch_name=$branch_name" >> "$GITHUB_OUTPUT"
+
+          if [[ "$target_version" == "$current_version" && -z "$requested_version" ]]; then
+            echo "update_required=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git ls-remote --exit-code --heads origin "$branch_name" >/dev/null 2>&1; then
+            echo "A branch already exists for $branch_name, skipping."
+            echo "update_required=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "update_required=true" >> "$GITHUB_OUTPUT"
+
+      - name: Update vendored esbuild binaries
+        if: steps.version.outputs.update_required == 'true'
+        run: dotnet run --file scripts/update_esbuild.cs -- --version "${{ steps.version.outputs.target_version }}"
+
+      - name: Validate package
+        if: steps.version.outputs.update_required == 'true'
+        run: dotnet pack src/AspNetCore.Bundling.ESBuild/AspNetCore.Bundling.ESBuild.csproj -c Release -o artifacts/packages
+
+      - name: Create Pull Request
+        if: steps.version.outputs.update_required == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: Update esbuild to ${{ steps.version.outputs.target_version }}
+          branch: ${{ steps.version.outputs.branch_name }}
+          delete-branch: true
+          title: Update esbuild to ${{ steps.version.outputs.target_version }}
+          body: |
+            Update vendored esbuild binaries to ${{ steps.version.outputs.target_version }}.
+
+            This PR was generated automatically by the scheduled update workflow.

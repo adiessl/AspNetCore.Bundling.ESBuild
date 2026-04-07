@@ -1,0 +1,93 @@
+name: Bug Report
+description: Report a reproducible problem in AspNetCore.Bundling.ESBuild
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing a bug:
+
+        - A minimal sample repository that reproduces the issue is required.
+        - Do not attach ZIP files.
+        - Do not link to external storage/services for the repro.
+        - If there is no repository we can clone and run directly, the report is likely to be closed without investigation.
+
+  - type: input
+    id: repro_repo
+    attributes:
+      label: Sample repository URL
+      description: Provide a public GitHub repository URL that reproduces the issue.
+      placeholder: https://github.com/your-account/repro-repo
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro_steps
+    attributes:
+      label: Reproduction steps
+      description: List the exact commands and steps needed after cloning the sample repository.
+      placeholder: |
+        1. Clone the repository
+        2. Run dotnet restore
+        3. Run dotnet build
+        4. Observe the failure
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: Paste the relevant build/test output directly into the issue.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: esbuild_json
+    attributes:
+      label: esbuild.json
+      description: Paste the relevant `esbuild.json` content from the repro.
+      render: json
+    validations:
+      required: true
+
+  - type: input
+    id: package_version
+    attributes:
+      label: AspNetCore.Bundling.ESBuild version
+      placeholder: 0.27.5
+    validations:
+      required: true
+
+  - type: input
+    id: dotnet_sdk
+    attributes:
+      label: .NET SDK version
+      placeholder: 8.0.x or exact SDK version
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: Windows 11 x64, Ubuntu 24.04 x64, macOS arm64, ...
+    validations:
+      required: true
