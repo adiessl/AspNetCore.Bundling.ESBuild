@@ -32,8 +32,10 @@ function Invoke-DotNet {
 
     Push-Location $WorkingDirectory
     try {
+        $global:LASTEXITCODE = 0
         $output = & dotnet @Arguments 2>&1
-        $exitCode = $LASTEXITCODE
+        $exitCodeVariable = Get-Variable -Name LASTEXITCODE -Scope Global -ErrorAction SilentlyContinue
+        $exitCode = if ($null -eq $exitCodeVariable) { 0 } else { [int]$exitCodeVariable.Value }
     }
     finally {
         Pop-Location

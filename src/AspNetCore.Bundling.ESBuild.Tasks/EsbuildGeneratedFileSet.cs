@@ -13,11 +13,11 @@ internal static class EsbuildGeneratedFileSet
         string primaryOutput;
         if (!string.IsNullOrWhiteSpace(outputPath))
         {
-            primaryOutput = outputPath!;
+            primaryOutput = NormalizePathSeparators(outputPath!);
         }
         else
         {
-            primaryOutput = Path.Combine(outdirPath!, Path.GetFileNameWithoutExtension(entryPoint) + ".js");
+            primaryOutput = NormalizePathSeparators(Path.Combine(outdirPath!, Path.GetFileNameWithoutExtension(entryPoint) + ".js"));
         }
 
         var files = new List<string> { primaryOutput };
@@ -47,7 +47,7 @@ internal static class EsbuildGeneratedFileSet
     {
         var normalizedOutputs = outputs
             .Where(static output => !string.IsNullOrWhiteSpace(output))
-            .Select(Path.GetFullPath)
+            .Select(NormalizeAbsolutePath)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(static output => output, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -70,8 +70,8 @@ internal static class EsbuildGeneratedFileSet
             .Select(output => output.Name)
             .Where(static output => !string.IsNullOrWhiteSpace(output))
             .Select(output => Path.IsPathRooted(output)
-                ? Path.GetFullPath(output)
-                : Path.GetFullPath(Path.Combine(workingDirectory, output)))
+                ? NormalizeAbsolutePath(output)
+                : NormalizeAbsolutePath(Path.Combine(workingDirectory, output)))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(static output => output, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -92,9 +92,15 @@ internal static class EsbuildGeneratedFileSet
 
         return outputs
             .Where(static output => !string.IsNullOrWhiteSpace(output))
-            .Select(Path.GetFullPath)
+            .Select(NormalizeAbsolutePath)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(static output => output, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
+
+    private static string NormalizeAbsolutePath(string value)
+        => NormalizePathSeparators(Path.GetFullPath(value));
+
+    private static string NormalizePathSeparators(string value)
+        => value.Replace('\\', '/');
 }
