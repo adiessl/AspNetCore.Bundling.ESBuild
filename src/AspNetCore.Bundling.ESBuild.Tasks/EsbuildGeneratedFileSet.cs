@@ -75,6 +75,7 @@ internal static class EsbuildGeneratedFileSet
             .Select(output => Path.IsPathRooted(output)
                 ? Path.GetFullPath(output)
                 : Path.GetFullPath(Path.Combine(workingDirectory, output)))
+            .Select(output => output.Replace('\\', '/'))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(static output => output, StringComparer.OrdinalIgnoreCase)
             .ToArray();

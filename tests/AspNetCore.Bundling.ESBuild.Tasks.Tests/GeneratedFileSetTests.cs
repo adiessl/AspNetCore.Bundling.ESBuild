@@ -59,8 +59,8 @@ public sealed class GeneratedFileSetTests
 
             Assert.Equal(
                 [
-                    Path.GetFullPath(Path.Combine(workingDirectory, "wwwroot/js/chunk-ABC123.js")),
-                    Path.GetFullPath(Path.Combine(workingDirectory, "wwwroot/js/site.js")),
+                    Path.GetFullPath(Path.Combine(workingDirectory, "wwwroot/js/chunk-ABC123.js")).Replace('\\', '/'),
+                    Path.GetFullPath(Path.Combine(workingDirectory, "wwwroot/js/site.js")).Replace('\\', '/'),
                 ],
                 outputs);
         }
