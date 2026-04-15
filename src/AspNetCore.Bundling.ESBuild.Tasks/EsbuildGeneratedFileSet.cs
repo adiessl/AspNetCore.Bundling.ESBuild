@@ -13,7 +13,7 @@ internal static class EsbuildGeneratedFileSet
         string primaryOutput;
         if (!string.IsNullOrWhiteSpace(outputPath))
         {
-            primaryOutput = NormalizePathSeparators(outputPath!);
+            primaryOutput = outputPath!;
         }
         else
         {
@@ -47,7 +47,7 @@ internal static class EsbuildGeneratedFileSet
     {
         var normalizedOutputs = outputs
             .Where(static output => !string.IsNullOrWhiteSpace(output))
-            .Select(NormalizeAbsolutePath)
+            .Select(Path.GetFullPath)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(static output => output, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -70,8 +70,8 @@ internal static class EsbuildGeneratedFileSet
             .Select(output => output.Name)
             .Where(static output => !string.IsNullOrWhiteSpace(output))
             .Select(output => Path.IsPathRooted(output)
-                ? NormalizeAbsolutePath(output)
-                : NormalizeAbsolutePath(Path.Combine(workingDirectory, output)))
+                ? Path.GetFullPath(output)
+                : Path.GetFullPath(Path.Combine(workingDirectory, output)))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(static output => output, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -92,14 +92,11 @@ internal static class EsbuildGeneratedFileSet
 
         return outputs
             .Where(static output => !string.IsNullOrWhiteSpace(output))
-            .Select(NormalizeAbsolutePath)
+            .Select(Path.GetFullPath)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(static output => output, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
-
-    private static string NormalizeAbsolutePath(string value)
-        => NormalizePathSeparators(Path.GetFullPath(value));
 
     private static string NormalizePathSeparators(string value)
         => value.Replace('\\', '/');

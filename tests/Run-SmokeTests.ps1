@@ -34,8 +34,7 @@ function Invoke-DotNet {
     try {
         $global:LASTEXITCODE = 0
         $output = & dotnet @Arguments 2>&1
-        $exitCodeVariable = Get-Variable -Name LASTEXITCODE -Scope Global -ErrorAction SilentlyContinue
-        $exitCode = if ($null -eq $exitCodeVariable) { 0 } else { [int]$exitCodeVariable.Value }
+        $exitCode = Get-LastExitCodeOrDefault
     }
     finally {
         Pop-Location
@@ -76,6 +75,19 @@ function Normalize-ForPathContains {
     return (($Value -replace '\\', '/') -replace '/+', '/')
 }
 
+function Get-LastExitCodeOrDefault {
+    param(
+        [int]$DefaultValue = 0
+    )
+
+    $exitCodeVariable = Get-Variable -Name LASTEXITCODE -Scope Global -ErrorAction SilentlyContinue
+    if ($null -eq $exitCodeVariable) {
+        return $DefaultValue
+    }
+
+    return [int]$exitCodeVariable.Value
+}
+
 function New-TempCopy {
     param(
         [Parameter(Mandatory = $true)]
@@ -114,7 +126,7 @@ function Test-RuntimeBinary {
     Assert-True (Test-Path $runtimePath) "Runtime binary not found: $runtimePath"
 
     $version = & $runtimePath --version
-    $exitCode = $LASTEXITCODE
+    $exitCode = Get-LastExitCodeOrDefault
 
     Assert-True ($exitCode -eq 0) "Running '$runtimePath --version' failed with exit code $exitCode."
     Assert-True ($version.Trim() -eq $UpstreamVersion) "Expected runtime version '$UpstreamVersion' but got '$version'."
