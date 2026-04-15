@@ -65,6 +65,15 @@ function Assert-True {
     }
 }
 
+function Normalize-ForPathContains {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Value
+    )
+
+    return (($Value -replace '\\', '/') -replace '/+', '/')
+}
+
 function New-TempCopy {
     param(
         [Parameter(Mandatory = $true)]
@@ -369,8 +378,8 @@ function Test-BasicRcl {
     Assert-True (Test-Path $buildManifestPath) "Expected static web assets build manifest: $buildManifestPath"
     Assert-True (Test-Path $developmentManifestPath) "Expected static web assets development manifest: $developmentManifestPath"
 
-    $buildManifest = Get-Content $buildManifestPath -Raw
-    $developmentManifest = Get-Content $developmentManifestPath -Raw
+    $buildManifest = Normalize-ForPathContains (Get-Content $buildManifestPath -Raw)
+    $developmentManifest = Normalize-ForPathContains (Get-Content $developmentManifestPath -Raw)
     $normalizedWwwroot = ($workingDirectory.Replace('\', '/') + '/wwwroot/')
 
     Assert-True ($buildManifest.Contains($normalizedWwwroot)) 'Expected the static web assets build manifest to point at the RCL wwwroot content root.'
@@ -411,7 +420,7 @@ function Test-RclHostAppPublish {
     $rclBundleContent = Get-Content $rclBundlePath -Raw
     Assert-True ($rclBundleContent.Contains('Hosted BasicRcl says hello')) 'Expected referenced RCL bundled output to contain the expected content.'
 
-    $hostPublishManifest = Get-Content $hostPublishManifestPath -Raw
+    $hostPublishManifest = Normalize-ForPathContains (Get-Content $hostPublishManifestPath -Raw)
     $normalizedRclWwwroot = ($workingRoot.Replace('\', '/') + '/BasicRcl/wwwroot/')
 
     Assert-True ($hostPublishManifest.Contains($normalizedRclWwwroot)) 'Expected the host publish manifest to point at the referenced RCL wwwroot content root.'
