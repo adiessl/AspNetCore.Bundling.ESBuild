@@ -30,6 +30,10 @@ function Invoke-DotNet {
     New-Item -ItemType Directory -Path $nugetPackages -Force | Out-Null
     $env:NUGET_PACKAGES = $nugetPackages
 
+    $commandText = "dotnet $($Arguments -join ' ')"
+    Write-Host "Running: $commandText"
+    Write-Host "Working directory: $WorkingDirectory"
+
     Push-Location $WorkingDirectory
     try {
         $output = & dotnet @Arguments 2>&1
@@ -41,15 +45,21 @@ function Invoke-DotNet {
         $env:NUGET_PACKAGES = $originalNuGetPackages
     }
 
+    $outputText = [string]::Join([Environment]::NewLine, $output)
+
     if (-not $ExpectFailure -and $exitCode -ne 0) {
-        throw "dotnet $($Arguments -join ' ') failed with exit code $exitCode.`n$output"
+        Write-Host "dotnet command failed with exit code $exitCode."
+        Write-Host '--- dotnet output start ---'
+        Write-Host $outputText
+        Write-Host '--- dotnet output end ---'
+        throw "dotnet $($Arguments -join ' ') failed with exit code $exitCode.`n$outputText"
     }
 
     if ($ExpectFailure -and $exitCode -eq 0) {
-        throw "dotnet $($Arguments -join ' ') succeeded unexpectedly.`n$output"
+        throw "dotnet $($Arguments -join ' ') succeeded unexpectedly.`n$outputText"
     }
 
-    return [string]::Join([Environment]::NewLine, $output)
+    return $outputText
 }
 
 function Assert-True {
@@ -150,6 +160,19 @@ function New-TempCopy {
 
     $target = Join-Path $root $Name
     Copy-Item -Path $SourceDirectory -Destination $target -Recurse
+
+    if (-not $IsWindows) {
+        $realPathOutput = & realpath $target 2>&1
+        $commandSucceeded = $?
+        $exitCode = Get-LastExitCode -CommandSucceeded:$commandSucceeded
+        if ($exitCode -eq 0) {
+            $realPath = [string]::Join([Environment]::NewLine, @($realPathOutput)).Trim()
+            if (-not [string]::IsNullOrWhiteSpace($realPath)) {
+                return $realPath
+            }
+        }
+    }
+
     return (Resolve-Path -LiteralPath $target).Path
 }
 
@@ -466,6 +489,11 @@ function Test-RclHostAppPublish {
     $workingRoot = New-TempCopy -SourceDirectory $source -Name "RclHostApp-$Configuration"
     $hostProjectPath = Join-Path $workingRoot 'HostApp/HostApp.csproj'
     $publishDirectory = Join-Path $workingRoot 'publish'
+    $rclProjectPath = Join-Path $workingRoot 'BasicRcl/BasicRcl.csproj'
+
+    Write-Host "RclHostApp working root: $workingRoot"
+    Write-Host "Host project path: $hostProjectPath"
+    Write-Host "RCL project path: $rclProjectPath"
 
     Invoke-DotNet -Arguments @(
         'publish',
