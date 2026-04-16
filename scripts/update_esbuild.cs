@@ -174,7 +174,7 @@ internal static class UpdateEsbuildApp
         projectText = Regex.Replace(
             projectText,
             "(<ESBuildUpstreamVersion>)[^<]+(</ESBuildUpstreamVersion>)",
-            $"$1{upstreamVersion}$2",
+            "${1}" + upstreamVersion + "${2}",
             RegexOptions.CultureInvariant,
             TimeSpan.FromSeconds(5));
 
