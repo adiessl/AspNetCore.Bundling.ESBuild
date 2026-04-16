@@ -33,7 +33,8 @@ function Invoke-DotNet {
     Push-Location $WorkingDirectory
     try {
         $output = & dotnet @Arguments 2>&1
-        $exitCode = $LASTEXITCODE
+        $commandSucceeded = $?
+        $exitCode = Get-LastExitCode -CommandSucceeded:$commandSucceeded
     }
     finally {
         Pop-Location
@@ -63,6 +64,37 @@ function Assert-True {
     if (-not $Condition) {
         throw $Message
     }
+}
+
+function Get-LastExitCode {
+    param(
+        [Parameter(Mandatory = $true)]
+        [bool]$CommandSucceeded
+    )
+
+    $exitCodeVariable = Get-Variable -Name LASTEXITCODE -Scope Global -ErrorAction SilentlyContinue
+    if ($null -eq $exitCodeVariable) {
+        return $(if ($CommandSucceeded) { 0 } else { 1 })
+    }
+
+    return [int]$exitCodeVariable.Value
+}
+
+function Ensure-ExecutablePermission {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    if ($IsWindows) {
+        return
+    }
+
+    $chmodOutput = & chmod +x $Path 2>&1
+    $commandSucceeded = $?
+    $exitCode = Get-LastExitCode -CommandSucceeded:$commandSucceeded
+
+    Assert-True ($exitCode -eq 0) "Failed to mark '$Path' as executable.`n$chmodOutput"
 }
 
 function Get-LineBreakCount {
@@ -140,11 +172,14 @@ function Get-EsbuildRuntimePath {
 function Test-RuntimeBinary {
     $runtimePath = [System.IO.Path]::GetFullPath((Get-EsbuildRuntimePath))
     Assert-True (Test-Path $runtimePath) "Runtime binary not found: $runtimePath"
+    Ensure-ExecutablePermission -Path $runtimePath
 
-    $version = & $runtimePath --version
-    $exitCode = $LASTEXITCODE
+    $versionOutput = & $runtimePath --version 2>&1
+    $commandSucceeded = $?
+    $exitCode = Get-LastExitCode -CommandSucceeded:$commandSucceeded
+    $version = [string]::Join([Environment]::NewLine, @($versionOutput))
 
-    Assert-True ($exitCode -eq 0) "Running '$runtimePath --version' failed with exit code $exitCode."
+    Assert-True ($exitCode -eq 0) "Running '$runtimePath --version' failed with exit code $exitCode.`n$version"
     Assert-True ($version.Trim() -eq $UpstreamVersion) "Expected runtime version '$UpstreamVersion' but got '$version'."
 }
 
