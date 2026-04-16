@@ -55,6 +55,7 @@ jobs:
           -PackageFeed "${{ github.workspace }}/artifacts/packages"
 
       - name: Push package to NuGet.org
+        id: nuget_push
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         shell: bash
@@ -66,10 +67,10 @@ jobs:
 
           dotnet nuget push artifacts/packages/*.nupkg \
             --api-key "$NUGET_API_KEY" \
-            --source "https://api.nuget.org/v3/index.json" \
-            --skip-duplicate
+            --source "https://api.nuget.org/v3/index.json"
 
       - name: Create GitHub release and upload NuGet package
+        if: success() && steps.nuget_push.outcome == 'success'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.version.outputs.package_version }}
