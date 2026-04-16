@@ -150,7 +150,7 @@ function New-TempCopy {
 
     $target = Join-Path $root $Name
     Copy-Item -Path $SourceDirectory -Destination $target -Recurse
-    return $target
+    return (Resolve-Path -LiteralPath $target).Path
 }
 
 function Get-EsbuildRuntimePath {
