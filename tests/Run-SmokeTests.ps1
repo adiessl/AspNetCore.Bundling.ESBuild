@@ -74,6 +74,36 @@ function Get-LineBreakCount {
     return ([regex]::Matches($Content, '\r?\n')).Count
 }
 
+function Normalize-PathForComparison {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $normalized = $Path -replace '\\', '/'
+    $normalized = $normalized.TrimEnd('/')
+    return $normalized.ToLowerInvariant()
+}
+
+function Get-ManifestContentRoots {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Manifest
+    )
+
+    $contentRoots = @()
+
+    if ($null -ne $Manifest.PSObject.Properties['DiscoveryPatterns']) {
+        $contentRoots += @($Manifest.DiscoveryPatterns | ForEach-Object { $_.ContentRoot })
+    }
+
+    if ($null -ne $Manifest.PSObject.Properties['ContentRoots']) {
+        $contentRoots += @($Manifest.ContentRoots)
+    }
+
+    return @($contentRoots | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+}
+
 function New-TempCopy {
     param(
         [Parameter(Mandatory = $true)]
@@ -378,13 +408,17 @@ function Test-BasicRcl {
     Assert-True (Test-Path $buildManifestPath) "Expected static web assets build manifest: $buildManifestPath"
     Assert-True (Test-Path $developmentManifestPath) "Expected static web assets development manifest: $developmentManifestPath"
 
-    $buildManifest = Get-Content $buildManifestPath -Raw
-    $developmentManifest = Get-Content $developmentManifestPath -Raw
-    $normalizedWwwroot = ($workingDirectory.Replace('\', '/') + '/wwwroot/')
+    $buildManifest = Get-Content $buildManifestPath -Raw | ConvertFrom-Json
+    $developmentManifest = Get-Content $developmentManifestPath -Raw | ConvertFrom-Json
+    $expectedWwwroot = Normalize-PathForComparison -Path (Join-Path $workingDirectory 'wwwroot')
 
-    Assert-True ($buildManifest.Contains($normalizedWwwroot)) 'Expected the static web assets build manifest to point at the RCL wwwroot content root.'
-    Assert-True ($buildManifest.Contains('"Pattern":"**"')) 'Expected the static web assets build manifest to include the recursive discovery pattern for wwwroot.'
-    Assert-True ($developmentManifest.Contains($normalizedWwwroot)) 'Expected the static web assets development manifest to point at the RCL wwwroot content root.'
+    $buildManifestRoots = @(Get-ManifestContentRoots -Manifest $buildManifest | ForEach-Object { Normalize-PathForComparison -Path $_ })
+    $developmentManifestRoots = @(Get-ManifestContentRoots -Manifest $developmentManifest | ForEach-Object { Normalize-PathForComparison -Path $_ })
+    $buildPatterns = @($buildManifest.DiscoveryPatterns | ForEach-Object { $_.Pattern })
+
+    Assert-True ($buildManifestRoots -icontains $expectedWwwroot) 'Expected the static web assets build manifest to point at the RCL wwwroot content root.'
+    Assert-True ($buildPatterns -contains '**') 'Expected the static web assets build manifest to include the recursive discovery pattern for wwwroot.'
+    Assert-True ($developmentManifestRoots -icontains $expectedWwwroot) 'Expected the static web assets development manifest to point at the RCL wwwroot content root.'
 }
 
 function Test-RclHostAppPublish {
@@ -420,12 +454,16 @@ function Test-RclHostAppPublish {
     $rclBundleContent = Get-Content $rclBundlePath -Raw
     Assert-True ($rclBundleContent.Contains('Hosted BasicRcl says hello')) 'Expected referenced RCL bundled output to contain the expected content.'
 
-    $hostPublishManifest = Get-Content $hostPublishManifestPath -Raw
-    $normalizedRclWwwroot = ($workingRoot.Replace('\', '/') + '/BasicRcl/wwwroot/')
+    $hostPublishManifest = Get-Content $hostPublishManifestPath -Raw | ConvertFrom-Json
+    $expectedRclWwwroot = Normalize-PathForComparison -Path (Join-Path $workingRoot 'BasicRcl/wwwroot')
 
-    Assert-True ($hostPublishManifest.Contains($normalizedRclWwwroot)) 'Expected the host publish manifest to point at the referenced RCL wwwroot content root.'
-    Assert-True ($hostPublishManifest.Contains('"_content/BasicRcl"')) 'Expected the host publish manifest to use the _content/BasicRcl base path.'
-    Assert-True ($hostPublishManifest.Contains('"Pattern":"**"')) 'Expected the host publish manifest to include the recursive discovery pattern for the RCL content root.'
+    $hostPublishRoots = @(Get-ManifestContentRoots -Manifest $hostPublishManifest | ForEach-Object { Normalize-PathForComparison -Path $_ })
+    $hostPublishBasePaths = @($hostPublishManifest.DiscoveryPatterns | ForEach-Object { $_.BasePath })
+    $hostPublishPatterns = @($hostPublishManifest.DiscoveryPatterns | ForEach-Object { $_.Pattern })
+
+    Assert-True ($hostPublishRoots -icontains $expectedRclWwwroot) 'Expected the host publish manifest to point at the referenced RCL wwwroot content root.'
+    Assert-True ($hostPublishBasePaths -contains '_content/BasicRcl') 'Expected the host publish manifest to use the _content/BasicRcl base path.'
+    Assert-True ($hostPublishPatterns -contains '**') 'Expected the host publish manifest to include the recursive discovery pattern for the RCL content root.'
 
     if ($Configuration -eq 'Debug') {
         Assert-True (Test-Path $rclMapPath) "Expected referenced RCL sourcemap to exist before host publish: $rclMapPath"
